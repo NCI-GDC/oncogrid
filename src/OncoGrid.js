@@ -73,8 +73,7 @@ OncoGrid.prototype.initCharts = function(reloading) {
   _self.computeDonorCounts();
   _self.computeGeneScoresAndCount();
   _self.genesSortbyScores();
-  _self.computeScores();
-  _self.sortByScores();
+  _self.sortByConsequene();
   _self.calculatePositions();
 
   if(reloading) {
@@ -188,8 +187,7 @@ OncoGrid.prototype.update = function(scope) {
     donorSort = (typeof donorSort === 'undefined' || donorSort === null) ? false: donorSort;
 
     if (donorSort) {
-      _self.computeScores();
-      _self.sortByScores();
+      _self.sortByConsequene();
     }
 
     _self.calculatePositions();
@@ -223,6 +221,41 @@ OncoGrid.prototype.resize = function(width, height, fullscreen) {
   });
 };
 
+OncoGrid.prototype.sortByConsequene = function() {
+  var _self = this;
+  const consequencePriorityOrder = [
+    'none',
+    'missense_variant',
+    'start_lost',
+    'stop_lost',
+    'stop_gained',
+    'frameshift_variant',
+  ].reverse();
+  for (var i = _self.genes.length - 1; i >= 0; i--) {
+    var geneId = _self.genes[i].id;
+    var grouped = _self.donors.reduce(function(acc, d) {
+      var mutationIds = (_self.lookupTable['mutation'][d.id] || [])[geneId] || [];
+      var consequence = "none";
+      if (mutationIds && mutationIds[mutationIds.length - 1] && mutationIds[mutationIds.length - 1][mutationIds[mutationIds.length - 1].length - 1]) {
+        var lastMutationsId = mutationIds[mutationIds.length - 1][mutationIds[mutationIds.length - 1].length - 1];
+        var mutation = _self.ssmObservations.find(function(o) { 
+          return o.donorId == d.id && o.ids.includes(lastMutationsId);
+        });
+        consequence = mutation.consequence;
+      }
+      var consequences = acc[consequence] || [];
+      consequences.push(d);
+      acc[consequence] = consequences;
+      return acc;
+    }, {});
+    
+    var sorted = consequencePriorityOrder.reduce(function(acc, consequence) {
+      return acc.concat(grouped[consequence] || []);
+    }, []);
+    _self.donors = sorted;  
+  }
+};
+
 /**
  * Sorts donors by score
  */
@@ -245,8 +278,7 @@ OncoGrid.prototype.cluster = function() {
   var _self = this;
 
   _self.genesSortbyScores();
-  _self.computeScores();
-  _self.sortByScores();
+  _self.sortByConsequene();
   _self.update(_self)();
 };
 
@@ -323,8 +355,7 @@ OncoGrid.prototype.sortDonors = function(func) {
 OncoGrid.prototype.sortGenes= function(func) {
   var _self = this;
 
-  _self.computeScores();
-  _self.sortByScores();
+  _self.sortByConsequene();
   _self.genes.sort(func);
   _self.update(_self)();
 };
@@ -444,7 +475,8 @@ OncoGrid.prototype.computeDonorCounts = function() {
   for (var i = 0; i < _self.donors.length; i++) {
     var donor = _self.donors[i];
     // genes are in nested arrays in the lookup table, need to flatten to get the correct count
-    var genes = [].concat.apply([], values(_self.lookupTable['mutation'][donor.id]));
+    var genes = [].concat.apply([], values((_self.lookupTable['mutation'] || [])[donor.id]));
+
     donor.count = 0;
     for(var j = 0; j < genes.length; j++) {
       donor.count += genes[j].length;

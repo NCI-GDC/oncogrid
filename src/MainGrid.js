@@ -98,7 +98,7 @@ MainGrid.prototype.loadParams = function (params) {
     _self.inputWidth = params.width || 500;
     _self.inputHeight = params.height || 500;
 
-    _self.cellWidth = _self.width / _self.donors.length;
+    _self.cellWidth = _self.width / _self.numDonors;
 
     _self.cellHeight = _self.height / _self.numGenes;
 
@@ -202,10 +202,7 @@ MainGrid.prototype.render = function () {
             return _self.getValueByType(d);
         })
         .attr('d', function (d) {
-            if (d.type === 'cnv' || _self.heatMap) {
-              return _self.getRectangularPath(d);
-            }
-            return _self.getCircularPath(d);
+            return _self.getRectangularPath(d);
         })
         .attr('fill', function (d) {
             return _self.getColor(d);
@@ -287,10 +284,7 @@ MainGrid.prototype.update = function (x, y) {
         _self.container.selectAll('.' + _self.prefix + 'sortable-rect-' + _self.types[i])
             .transition()
             .attr('d', function (d) {
-              if (d.type === 'cnv' || _self.heatMap) {
-                return _self.getRectangularPath(d);
-              }
-              return _self.getCircularPath(d);
+              return _self.getRectangularPath(d);
             })
     }
 
@@ -708,13 +702,6 @@ MainGrid.prototype.getY = function (d) {
 
     var y = _self.geneMap[d.geneId].y;
 
-    if (!_self.heatMap && d.type === 'mutation') {
-      var yPosition = y + _self.cellHeight/2;
-      if (yPosition < 0) {
-        return 0;
-      }
-      return yPosition;
-    }
     return y;
 };
 
@@ -726,9 +713,6 @@ MainGrid.prototype.getCellX = function (d) {
 
   var x = _self.lookupTable[d.type][d.donorId].x;
 
-  if (!_self.heatMap && d.type === 'mutation') {
-    return x + (_self.cellWidth/4);
-  }
   return x;
 };
 
@@ -768,14 +752,7 @@ MainGrid.prototype.getHeight = function (d) {
     var _self = this;
 
     if (typeof d !== 'undefined') {
-        if (!_self.heatMap === true && d.type === 'mutation') {
-          if (_self.cellWidth > _self.cellHeight) {
-            return _self.cellHeight/2;
-          }
-          return (_self.cellWidth/2);
-        } else {
-          return _self.cellHeight;
-        }
+        return _self.cellHeight;
     } else {
         return 0;
     }
@@ -783,13 +760,7 @@ MainGrid.prototype.getHeight = function (d) {
 
 MainGrid.prototype.getCellWidth = function (d) {
     var _self = this;
-    if (_self.heatMap || d.type === 'cnv') {
-      return _self.cellWidth;
-    }
-    if (_self.cellWidth > _self.cellHeight) {
-      return _self.cellHeight/4;
-    }
-    return _self.cellWidth/4;
+    return _self.cellWidth;
 };
 
 /**
@@ -835,10 +806,7 @@ MainGrid.prototype.setHeatmap = function (active) {
       d3.selectAll('.' + _self.prefix + 'sortable-rect-' + _self.types[i])
         .transition()
       .attr('d', function (d) {
-        if (d.type === 'cnv' || _self.heatMap) {
-            return _self.getRectangularPath(d);
-        }
-        return _self.getCircularPath(d);
+        return _self.getRectangularPath(d);
       })
       .attr('fill', function (d) {
           return _self.getColor(d);
